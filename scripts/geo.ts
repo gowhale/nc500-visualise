@@ -76,7 +76,9 @@ export function smoothElevation(points: Point[], window = 7): number[] {
         n++
       }
     }
-    out.push(n ? sum / n : 0)
+    // Carry the last known value through all-null windows rather than
+    // inventing sea level.
+    out.push(n ? sum / n : out.length ? out[out.length - 1] : 0)
   }
   return out
 }
@@ -89,9 +91,13 @@ export function smoothElevation(points: Point[], window = 7): number[] {
  */
 export function totalAscentM(points: Point[], stepM = 50, threshold = 3): number {
   if (points.length < 2) return 0
+  // Seed from the first real elevation so a track whose recording starts late
+  // doesn't count the jump from 0 as a climb.
+  const firstEle = points.find((p) => p.ele !== null)?.ele ?? null
+  if (firstEle === null) return 0
   const ele: number[] = []
   let acc = 0
-  let lastEle = points[0].ele ?? 0
+  let lastEle = firstEle
   ele.push(lastEle)
   for (let i = 1; i < points.length; i++) {
     acc += haversineM(points[i - 1], points[i])

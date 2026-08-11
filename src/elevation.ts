@@ -25,19 +25,73 @@ export class ElevationRibbon {
     this.canvas = canvas
     this.ctx = canvas.getContext('2d')!
     this.tooltip = tooltip
+    canvas.tabIndex = 0
+    canvas.setAttribute('role', 'img')
 
     new ResizeObserver(() => this.draw()).observe(canvas)
+    this.watchDpr()
     canvas.addEventListener('pointermove', (e) => this.handlePointer(e))
     canvas.addEventListener('pointerdown', (e) => {
       const row = this.rowAtEvent(e)
       if (row) this.onSeek?.(row)
     })
-    canvas.addEventListener('pointerleave', () => {
-      this.hoverIdx = null
-      this.tooltip.hidden = true
-      this.onHover?.(null)
-      this.draw()
-    })
+    canvas.addEventListener('pointerleave', () => this.clearHover())
+    canvas.addEventListener('blur', () => this.clearHover())
+    canvas.addEventListener('keydown', (e) => this.handleKey(e))
+  }
+
+  /** Re-render when the canvas moves to a monitor with a different pixel ratio. */
+  private watchDpr(): void {
+    matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener(
+      'change',
+      () => {
+        this.draw()
+        this.watchDpr()
+      },
+      { once: true },
+    )
+  }
+
+  private clearHover(): void {
+    this.hoverIdx = null
+    this.tooltip.hidden = true
+    this.onHover?.(null)
+    this.draw()
+  }
+
+  private handleKey(e: KeyboardEvent): void {
+    if (!this.profile.length) return
+    const step = Math.max(1, Math.round(this.profile.length / 200))
+    const last = this.profile.length - 1
+    let idx = this.hoverIdx ?? 0
+    switch (e.key) {
+      case 'ArrowLeft':
+        idx = Math.max(0, idx - step)
+        break
+      case 'ArrowRight':
+        idx = Math.min(last, idx + step)
+        break
+      case 'Home':
+        idx = 0
+        break
+      case 'End':
+        idx = last
+        break
+      case 'Enter':
+      case ' ': {
+        const row = this.hoverIdx !== null ? this.profile[this.hoverIdx] : null
+        if (row) this.onSeek?.(row)
+        e.preventDefault()
+        return
+      }
+      default:
+        return
+    }
+    e.preventDefault()
+    this.hoverIdx = idx
+    this.showTooltipFor(this.profile[idx])
+    this.onHover?.(this.profile[idx])
+    this.draw()
   }
 
   setData(profile: ProfileRow[], days: DayStats[]): void {
@@ -51,6 +105,10 @@ export class ElevationRibbon {
     this.maxEle = Math.ceil((this.maxEle * 1.08) / step) * step
     this.hoverIdx = null
     this.progressKm = null
+    this.canvas.setAttribute(
+      'aria-label',
+      `Elevation profile: ${days.length} day${days.length === 1 ? '' : 's'}, ${Math.round(this.totalKm)} km, 0 to ${this.maxEle} m. Use arrow keys to inspect.`,
+    )
     this.draw()
   }
 
@@ -89,14 +147,18 @@ export class ElevationRibbon {
     return row
   }
 
-  private handlePointer(e: PointerEvent): void {
-    const row = this.rowAtEvent(e)
-    if (!row) return
+  private showTooltipFor(row: ProfileRow): void {
     const rect = this.canvas.getBoundingClientRect()
     const x = this.xFor(row[0], rect.width)
     this.tooltip.hidden = false
     this.tooltip.style.left = `${Math.max(70, Math.min(rect.width - 70, x))}px`
     this.tooltip.innerHTML = `<span class="tt-day">Day ${row[4]}</span> · ${row[0].toFixed(1)} km · ${row[1]} m`
+  }
+
+  private handlePointer(e: PointerEvent): void {
+    const row = this.rowAtEvent(e)
+    if (!row) return
+    this.showTooltipFor(row)
     this.onHover?.(row)
     this.draw()
   }
@@ -105,7 +167,10 @@ export class ElevationRibbon {
     const rect = this.canvas.getBoundingClientRect()
     if (!rect.width || !rect.height) return
     const dpr = window.devicePixelRatio || 1
-    if (this.canvas.width !== Math.round(rect.width * dpr)) {
+    if (
+      this.canvas.width !== Math.round(rect.width * dpr) ||
+      this.canvas.height !== Math.round(rect.height * dpr)
+    ) {
       this.canvas.width = Math.round(rect.width * dpr)
       this.canvas.height = Math.round(rect.height * dpr)
     }

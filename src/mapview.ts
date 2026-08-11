@@ -50,6 +50,7 @@ export class MapView {
   private dayMarkers: maplibregl.Marker[] = []
   private puck: maplibregl.Marker
   private terrainOn = true
+  private loadedPromise: Promise<void>
   onDayClick: ((day: number) => void) | null = null
 
   constructor(container: HTMLElement) {
@@ -70,6 +71,10 @@ export class MapView {
     puckEl.className = 'puck'
     this.puck = new maplibregl.Marker({ element: puckEl })
 
+    // 'load' fires exactly once; map.loaded() flips back to false whenever
+    // tiles are in flight, so polling it can miss the event entirely.
+    this.loadedPromise = new Promise((resolve) => this.map.once('load', () => resolve()))
+
     this.map.on('load', () => {
       this.map.addSource('dem', demSource())
       this.enableTerrain(true)
@@ -89,10 +94,7 @@ export class MapView {
   }
 
   whenLoaded(): Promise<void> {
-    return new Promise((resolve) => {
-      if (this.map.loaded()) resolve()
-      else this.map.once('load', () => resolve())
-    })
+    return this.loadedPromise
   }
 
   enableTerrain(on: boolean): void {
@@ -174,9 +176,29 @@ export class MapView {
     }
   }
 
+  /** Padding that tracks the actual overlay layout instead of assuming desktop. */
+  private boundsPadding(): { top: number; bottom: number; left: number; right: number } {
+    const container = this.map.getContainer()
+    const w = container.clientWidth
+    const h = container.clientHeight
+    const ribbonH =
+      parseFloat(getComputedStyle(document.body).getPropertyValue('--ribbon-h')) || 158
+    const mobile = window.matchMedia('(max-width: 760px)').matches
+    const panelCollapsed = document
+      .getElementById('riders-panel')
+      ?.classList.contains('collapsed')
+    const pad = mobile
+      ? { top: 140, bottom: ribbonH + 46, left: 28, right: 28 }
+      : { top: 90, bottom: ribbonH + 30, left: panelCollapsed ? 60 : 320, right: 60 }
+    // Never hand MapLibre padding wider than the viewport — it aborts the move.
+    if (pad.left + pad.right > w - 80) pad.left = pad.right = Math.max(12, (w - 80) / 2)
+    if (pad.top + pad.bottom > h - 80) pad.top = pad.bottom = Math.max(12, (h - 80) / 2)
+    return pad
+  }
+
   flyToBounds(bounds: [number, number, number, number], opts: { intro?: boolean } = {}): void {
     const b = new maplibregl.LngLatBounds([bounds[0], bounds[1]], [bounds[2], bounds[3]])
-    const padding = { top: 90, bottom: 60, left: 320, right: 60 }
+    const padding = this.boundsPadding()
     if (REDUCED_MOTION) {
       this.map.fitBounds(b, { padding, pitch: 0, duration: 0 })
       return

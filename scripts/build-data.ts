@@ -75,10 +75,14 @@ function reportPersonalData(file: string, xml: string): void {
   if (/<(?:\w+:)?(?:atemp|temp)>/i.test(xml)) sensors.push('temperature')
   if (/<(?:\w+:)?power>/i.test(xml) || /PowerInWatts/i.test(xml)) sensors.push('power')
   if (sensors.length) findings.push(`sensor data (${sensors.join(', ')})`)
-  const creator = xml.match(/creator="([^"]*)"/)
-  if (creator && creator[1] !== 'nc500-visualise') findings.push(`device/creator "${creator[1]}"`)
-  if (/<author>/.test(xml)) findings.push('author metadata')
-  if (/<email\b/.test(xml)) findings.push('email address')
+  const creator = xml.match(/creator=("([^"]*)"|'([^']*)')/)
+  const creatorValue = creator?.[2] ?? creator?.[3]
+  if (creator && creatorValue !== 'nc500-visualise') findings.push(`device/creator "${creatorValue}"`)
+  if (/<author\b/i.test(xml)) findings.push('author metadata')
+  if (/<email\b/i.test(xml)) findings.push('email address')
+  if (/<link\b/i.test(xml)) findings.push('links')
+  if (/<(desc|cmt)\b/i.test(xml)) findings.push('descriptions/comments')
+  if (/<wpt\b/i.test(xml)) findings.push('saved waypoints')
   if (findings.length) {
     personalDataFound = true
     console.warn(`  ⚠ ${file} contains ${findings.join('; ')}`)

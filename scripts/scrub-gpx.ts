@@ -19,16 +19,20 @@ function scrub(xml: string): { out: string; removed: string[] } {
     }
   }
 
-  strip('sensor/device extensions', /<extensions>[\s\S]*?<\/extensions>/g)
-  strip('author metadata', /<author>[\s\S]*?<\/author>/g)
-  strip('email', /<email\b[^>]*\/>|<email\b[^>]*>[\s\S]*?<\/email>/g)
-  strip('links', /<link\b[^>]*\/>|<link\b[^>]*>[\s\S]*?<\/link>/g)
-  strip('keywords', /<keywords>[\s\S]*?<\/keywords>/g)
+  strip('sensor/device extensions', /<extensions\b[^>]*>[\s\S]*?<\/extensions>/gi)
+  strip('author metadata', /<author\b[^>]*>[\s\S]*?<\/author>/gi)
+  strip('email', /<email\b[^>]*\/>|<email\b[^>]*>[\s\S]*?<\/email>/gi)
+  strip('links', /<link\b[^>]*\/>|<link\b[^>]*>[\s\S]*?<\/link>/gi)
+  strip('keywords', /<keywords\b[^>]*>[\s\S]*?<\/keywords>/gi)
+  strip('descriptions/comments', /<(desc|cmt)\b[^>]*>[\s\S]*?<\/\1>/gi)
+  strip('source tags', /<src\b[^>]*>[\s\S]*?<\/src>/gi)
+  strip('saved waypoints', /<wpt\b[^>]*\/>|<wpt\b[^>]*>[\s\S]*?<\/wpt>/gi)
 
-  const creator = out.match(/creator="([^"]*)"/)
-  if (creator && creator[1] !== 'nc500-visualise') {
-    out = out.replace(/creator="[^"]*"/, 'creator="nc500-visualise"')
-    removed.push(`creator ("${creator[1]}")`)
+  const creator = out.match(/creator=("([^"]*)"|'([^']*)')/)
+  const creatorValue = creator?.[2] ?? creator?.[3]
+  if (creator && creatorValue !== 'nc500-visualise') {
+    out = out.replace(/creator=("[^"]*"|'[^']*')/, 'creator="nc500-visualise"')
+    removed.push(`creator ("${creatorValue}")`)
   }
 
   // Collapse blank lines left behind by removed blocks.

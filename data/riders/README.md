@@ -22,3 +22,6 @@ data/riders/
 - Run `npm run data` (also runs automatically in `dev`/`build`) to regenerate
   the site's data. While this folder has no GPX files, a demo NC500 route is
   generated instead.
+- **Run `npm run scrub` before committing new GPX files** — it strips heart
+  rate and other sensor streams, device names, and account links that head-unit
+  exports embed, keeping the route itself intact.

@@ -59,13 +59,14 @@
       </button>
       <div class="ribbon-chart">
         <canvas id="elevation"></canvas>
-        <div class="chart-tooltip" id="chart-tooltip" role="status" hidden></div>
+        <div class="chart-tooltip" id="chart-tooltip" aria-hidden="true" hidden></div>
       </div>
     </section>
 
     <div class="notice" id="demo-notice" hidden>
       Demo route shown — drop GPX files into <code>data/riders/&lt;name&gt;/</code> to replace it.
     </div>
+    <div class="notice" id="error-notice" role="alert" hidden></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

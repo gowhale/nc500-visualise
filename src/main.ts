@@ -26,6 +26,15 @@ const el = {
   elevation: document.getElementById('elevation') as HTMLCanvasElement,
   tooltip: document.getElementById('chart-tooltip')!,
   demoNotice: document.getElementById('demo-notice')!,
+  errorNotice: document.getElementById('error-notice')!,
+}
+
+let errorTimer: ReturnType<typeof setTimeout> | undefined
+function showError(msg: string): void {
+  el.errorNotice.textContent = msg
+  el.errorNotice.hidden = false
+  clearTimeout(errorTimer)
+  errorTimer = setTimeout(() => (el.errorNotice.hidden = true), 6000)
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
@@ -65,7 +74,7 @@ function renderRiderList(): void {
     name.className = 'rider-name'
     name.textContent = rider.manifest.name
     name.title = `Show ${rider.manifest.name}'s stats and profile`
-    name.addEventListener('click', () => void focusRider(rider.manifest.id))
+    name.addEventListener('click', () => safeFocus(rider.manifest.id))
 
     const km = document.createElement('span')
     km.className = 'rider-km'
@@ -83,7 +92,7 @@ function renderRiderList(): void {
       if (!rider.visible && rider.manifest.id === focusedId) {
         const next = riders.find((r) => r.visible)
         if (next) {
-          void focusRider(next.manifest.id)
+          safeFocus(next.manifest.id)
           return
         }
         rider.visible = true // never hide the last visible rider
@@ -121,8 +130,22 @@ function renderDayList(): void {
     const btn = document.createElement('button')
     btn.className = 'day-row'
     btn.title = `Fly to day ${day.day}${day.date ? ` (${fmtDate(day.date)})` : ''}`
-    btn.innerHTML = `<span class="day-num">${String(day.day).padStart(2, '0')}</span><span class="day-label">${day.label}</span><span class="day-dist">${fmtKm(day.distanceKm)} · ${fmtM(day.ascentM)}↑</span>`
-    btn.addEventListener('click', () => mapView.flyToDay(rider, day.day))
+    // day.label comes from GPX track names — rider-supplied text must never
+    // reach innerHTML.
+    const num = document.createElement('span')
+    num.className = 'day-num'
+    num.textContent = String(day.day).padStart(2, '0')
+    const label = document.createElement('span')
+    label.className = 'day-label'
+    label.textContent = day.label
+    const dist = document.createElement('span')
+    dist.className = 'day-dist'
+    dist.textContent = `${fmtKm(day.distanceKm)} · ${fmtM(day.ascentM)}↑`
+    btn.append(num, label, dist)
+    btn.addEventListener('click', () => {
+      fly.stop()
+      mapView.flyToDay(rider, day.day)
+    })
     li.append(btn)
     el.dayList.append(li)
   }
@@ -156,13 +179,25 @@ async function focusRider(id: string, intro = false): Promise<void> {
   renderDayList()
   renderBrandSub()
   mapView.flyToBounds(rider.manifest.bounds, { intro })
-  rider.profile = await loadProfile(id)
+  const profile = await loadProfile(id)
+  if (focusedId !== id) return // the user switched riders while we fetched
+  rider.profile = profile
   ribbon.setData(rider.profile, rider.manifest.days)
+}
+
+function safeFocus(id: string): void {
+  focusRider(id).catch((err) => {
+    console.error(err)
+    showError('Could not load that rider’s data — check your connection and try again.')
+  })
 }
 
 function setPlaying(playing: boolean): void {
   el.btnPlay.classList.toggle('playing', playing)
   el.btnPlay.querySelector('.play-label')!.textContent = playing ? 'Stop' : 'Fly the route'
+  // The visible label is hidden on small screens — keep the accessible name true.
+  el.btnPlay.title = playing ? 'Stop the fly-through' : 'Fly along the route'
+  el.btnPlay.setAttribute('aria-label', playing ? 'Stop the fly-through' : 'Fly along the route')
 }
 
 async function init(): Promise<void> {
@@ -188,7 +223,10 @@ async function init(): Promise<void> {
     if (fly.active) return
     mapView.map.easeTo({ center: [row[2], row[3]], zoom: Math.max(mapView.map.getZoom(), 11.5), duration: 900 })
   }
-  mapView.onDayClick = (day) => mapView.flyToDay(focused(), day)
+  mapView.onDayClick = (day) => {
+    fly.stop()
+    mapView.flyToDay(focused(), day)
+  }
 
   el.btnCollapsePanel.addEventListener('click', () => {
     const collapsed = el.ridersPanel.classList.toggle('collapsed')
@@ -200,7 +238,10 @@ async function init(): Promise<void> {
     const collapsed = document.body.classList.toggle('ribbon-collapsed')
     el.btnCollapseRibbon.setAttribute('aria-expanded', String(!collapsed))
     el.btnCollapseRibbon.title = collapsed ? 'Expand elevation profile' : 'Collapse elevation profile'
-    if (collapsed) mapView.hidePuck()
+    if (collapsed) {
+      fly.stop() // collapsing hides the Stop button — don't strand a flight
+      mapView.hidePuck()
+    }
   })
 
   el.btnReset.addEventListener('click', () => {
@@ -209,6 +250,7 @@ async function init(): Promise<void> {
   })
 
   el.btn3d.addEventListener('click', () => {
+    fly.stop() // the flight re-applies pitch every frame and would undo this
     const on = !mapView.terrainEnabled
     mapView.enableTerrain(on)
     el.btn3d.setAttribute('aria-pressed', String(on))
@@ -223,16 +265,24 @@ async function init(): Promise<void> {
     ribbon.setProgress(null)
     mapView.hidePuck()
   }
-  el.btnPlay.addEventListener('click', async () => {
+  el.btnPlay.addEventListener('click', () => {
     if (fly.active) {
       fly.stop()
       mapView.flyToBounds(focused().manifest.bounds)
       return
     }
     if (REDUCED_MOTION) return // respect reduced motion: no auto camera ride
-    const profile = await loadProfile(focusedId)
-    setPlaying(true)
-    fly.start(profile)
+    const id = focusedId
+    loadProfile(id)
+      .then((profile) => {
+        // Bail if the rider changed (or a flight started) while we fetched.
+        if (fly.active || focusedId !== id) return
+        setPlaying(fly.start(profile))
+      })
+      .catch((err) => {
+        console.error(err)
+        showError('Could not load the route for the fly-through — try again.')
+      })
   })
   if (REDUCED_MOTION) {
     el.btnPlay.disabled = true

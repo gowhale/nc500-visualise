@@ -50,8 +50,9 @@ export class Flythrough {
     return [km, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, a[3] + (b[3] - a[3]) * f, a[4]]
   }
 
-  start(profile: ProfileRow[]): void {
-    if (this.active || profile.length < 2) return
+  /** Returns false if the flight could not start (already active / no route). */
+  start(profile: ProfileRow[]): boolean {
+    if (this.active || profile.length < 2) return false
     this.active = true
     const totalKm = profile[profile.length - 1][0]
     const durationMs = Math.min(120, Math.max(45, totalKm * 0.13)) * 1000
@@ -61,16 +62,20 @@ export class Flythrough {
     let bearing = this.map.getBearing()
     let startTime = 0
 
-    // Any manual interaction hands the camera back to the user.
+    // Any manual interaction hands the camera back to the user. Ignore key
+    // auto-repeat so the Enter press that started the flight can't also kill it.
     const cancel = () => this.stop()
+    const keyCancel = (e: KeyboardEvent) => {
+      if (!e.repeat) cancel()
+    }
     const canvas = this.map.getCanvasContainer()
     canvas.addEventListener('pointerdown', cancel)
     window.addEventListener('wheel', cancel, { passive: true })
-    window.addEventListener('keydown', cancel)
+    window.addEventListener('keydown', keyCancel)
     this.cancelInput = () => {
       canvas.removeEventListener('pointerdown', cancel)
       window.removeEventListener('wheel', cancel)
-      window.removeEventListener('keydown', cancel)
+      window.removeEventListener('keydown', keyCancel)
     }
 
     const frame = (now: number) => {
@@ -102,6 +107,7 @@ export class Flythrough {
       this.raf = requestAnimationFrame(frame)
     }
     this.raf = requestAnimationFrame(frame)
+    return true
   }
 
   stop(): void {
