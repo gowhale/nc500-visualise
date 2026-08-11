@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NC500 — Ten Days Round the North</title>
+    <meta name="description" content="A 10-day bike trip around Scotland's North Coast 500, mapped." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="map" aria-label="Satellite map of the route"></div>
+
+    <header class="brand">
+      <p class="brand-eyebrow" id="brand-eyebrow">North Coast 500 · Scotland</p>
+      <h1 class="brand-title">Ten days<br />round the north</h1>
+      <p class="brand-sub" id="brand-sub"></p>
+    </header>
+
+    <aside class="panel riders" id="riders-panel" aria-label="Riders">
+      <h2 class="panel-heading">Riders</h2>
+      <ul class="rider-list" id="rider-list"></ul>
+      <div class="stats" id="stats" aria-live="polite"></div>
+      <details class="day-table" id="day-table">
+        <summary>Day by day</summary>
+        <ol class="day-list" id="day-list"></ol>
+      </details>
+    </aside>
+
+    <div class="map-actions">
+      <button class="chip-btn" id="btn-3d" aria-pressed="true" title="Toggle 3D terrain view">3D</button>
+    </div>
+
+    <section class="ribbon" id="ribbon" aria-label="Elevation profile">
+      <button class="play-btn" id="btn-play" title="Fly along the route">
+        <svg class="icon-play" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+        <svg class="icon-stop" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 6h12v12H6z"/></svg>
+        <span class="play-label">Fly the route</span>
+      </button>
+      <div class="ribbon-chart">
+        <canvas id="elevation"></canvas>
+        <div class="chart-tooltip" id="chart-tooltip" role="status" hidden></div>
+      </div>
+    </section>
+
+    <div class="notice" id="demo-notice" hidden>
+      Demo route shown — drop GPX files into <code>data/riders/&lt;name&gt;/</code> to replace it.
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
