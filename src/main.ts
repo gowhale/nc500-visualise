@@ -16,6 +16,11 @@ const el = {
   stats: document.getElementById('stats')!,
   dayList: document.getElementById('day-list')!,
   dayTable: document.getElementById('day-table')!,
+  panelHeading: document.getElementById('panel-heading')!,
+  ridersPanel: document.getElementById('riders-panel')!,
+  btnCollapsePanel: document.getElementById('btn-collapse-panel') as HTMLButtonElement,
+  btnCollapseRibbon: document.getElementById('btn-collapse-ribbon') as HTMLButtonElement,
+  btnReset: document.getElementById('btn-reset') as HTMLButtonElement,
   btn3d: document.getElementById('btn-3d') as HTMLButtonElement,
   btnPlay: document.getElementById('btn-play') as HTMLButtonElement,
   elevation: document.getElementById('elevation') as HTMLCanvasElement,
@@ -44,8 +49,7 @@ function focused(): Rider {
 function renderRiderList(): void {
   el.riderList.innerHTML = ''
   // A single rider needs no legend/toggle panel — hide the list, keep stats.
-  ;(el.riderList.parentElement as HTMLElement).querySelector('.panel-heading')!.textContent =
-    riders.length > 1 ? 'Riders' : 'The ride'
+  el.panelHeading.textContent = riders.length > 1 ? 'Riders' : 'The ride'
   el.riderList.style.display = riders.length > 1 ? '' : 'none'
   for (const rider of riders) {
     const li = document.createElement('li')
@@ -185,6 +189,24 @@ async function init(): Promise<void> {
     mapView.map.easeTo({ center: [row[2], row[3]], zoom: Math.max(mapView.map.getZoom(), 11.5), duration: 900 })
   }
   mapView.onDayClick = (day) => mapView.flyToDay(focused(), day)
+
+  el.btnCollapsePanel.addEventListener('click', () => {
+    const collapsed = el.ridersPanel.classList.toggle('collapsed')
+    el.btnCollapsePanel.setAttribute('aria-expanded', String(!collapsed))
+    el.btnCollapsePanel.title = collapsed ? 'Expand panel' : 'Collapse panel'
+  })
+
+  el.btnCollapseRibbon.addEventListener('click', () => {
+    const collapsed = document.body.classList.toggle('ribbon-collapsed')
+    el.btnCollapseRibbon.setAttribute('aria-expanded', String(!collapsed))
+    el.btnCollapseRibbon.title = collapsed ? 'Expand elevation profile' : 'Collapse elevation profile'
+    if (collapsed) mapView.hidePuck()
+  })
+
+  el.btnReset.addEventListener('click', () => {
+    fly.stop()
+    mapView.flyToBounds(focused().manifest.bounds)
+  })
 
   el.btn3d.addEventListener('click', () => {
     const on = !mapView.terrainEnabled

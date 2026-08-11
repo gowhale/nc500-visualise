@@ -97,6 +97,13 @@ body {
   padding: 14px 16px 16px;
 }
 
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 .panel-heading {
   font-family: var(--mono);
   font-size: 10px;
@@ -104,7 +111,37 @@ body {
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--ink-muted);
-  margin-bottom: 10px;
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+}
+
+.collapse-btn:hover {
+  color: var(--ink);
+}
+
+.collapse-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.collapse-btn[aria-expanded='false'] svg {
+  transform: rotate(180deg);
+}
+
+.riders.collapsed .panel-body {
+  display: none;
+}
+
+.riders.collapsed .panel-head {
+  margin-bottom: 0;
 }
 
 .rider-list {
@@ -313,6 +350,12 @@ body {
   cursor: pointer;
 }
 
+.chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .chip-btn[aria-pressed='false'] {
   color: var(--ink-muted);
 }
@@ -349,6 +392,10 @@ body {
 
 /* ---------- elevation ribbon ---------- */
 
+body.ribbon-collapsed {
+  --ribbon-h: 38px;
+}
+
 .ribbon {
   position: fixed;
   left: 22px;
@@ -366,6 +413,44 @@ body {
   border-radius: var(--radius);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   padding: 10px;
+}
+
+.ribbon-collapse {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  z-index: 2;
+}
+
+.ribbon-label {
+  display: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  align-self: center;
+  padding-left: 6px;
+}
+
+body.ribbon-collapsed .ribbon {
+  align-items: center;
+  padding: 6px 10px;
+}
+
+body.ribbon-collapsed .ribbon .play-btn,
+body.ribbon-collapsed .ribbon .ribbon-chart {
+  display: none;
+}
+
+body.ribbon-collapsed .ribbon .ribbon-label {
+  display: block;
+}
+
+body.ribbon-collapsed .ribbon-collapse {
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .play-btn {
